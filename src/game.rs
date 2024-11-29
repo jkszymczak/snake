@@ -2,6 +2,7 @@ use rand;
 use termion::raw::RawTerminal;
 use termion::screen::AlternateScreen;
 use std::io::{stdout, Stdout, Write};
+use std::thread;
 use std::time::{Duration, Instant};
 use termion::{
     screen::IntoAlternateScreen,
@@ -16,7 +17,7 @@ use crate::grid::{ Cell, Grid };
 use crate::position::Position;
 use crate::snake::{ Snake, Status };
 
-const SNAKE_SPEED_MS: u64 = 200;
+const FRAME_DURATION: Duration = Duration::from_millis(200);
 
 #[derive(PartialEq)]
 enum State {
@@ -67,22 +68,26 @@ impl Game {
         let stdout = stdout().into_raw_mode().unwrap();
         let mut screen = stdout.into_alternate_screen().unwrap();
 
-        let mut time = Instant::now();
-        let mut now: Instant;
-        let frame_duration = Duration::from_millis(SNAKE_SPEED_MS);
-
-        let mut state = State::Playing;
-
         write!(
             screen,
             "{}",
             termion::cursor::Hide,
         ).expect("Failed to hide cursor");
 
+        let mut time = Instant::now();
+        let mut state = State::Playing;
         while state == State::Playing {
-            let input = stdin.next();
+            state = self.update();
+            self.render(&mut screen);
 
-            if let Some(Ok(key)) = input {
+            let elapsed = Instant::now().duration_since(time);
+            if let Some(t) = FRAME_DURATION.checked_sub(elapsed) {
+                thread::sleep(t);
+            }
+            time = Instant::now();
+
+            let mut input = stdin.next();
+            while let Some(Ok(key)) = input {
                 match key {
                     Key::Left  | Key::Char('h') => {
                         self.snake.set_dir(Direction::Left);
@@ -101,14 +106,7 @@ impl Game {
                     },
                     _ => (),
                 }
-            }
-
-            // TODO: Eliminate busy-waiting
-            now = Instant::now();
-            if now.duration_since(time) >= frame_duration {
-                state = self.update();
-                self.render(&mut screen);
-                time = now;
+                input = stdin.next();
             }
         }
 
