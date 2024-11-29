@@ -15,6 +15,7 @@ pub enum Status {
 pub struct Snake {
     dir: Direction,
     segments: LinkedList<Position>,
+    status: Status,
 }
 
 impl Snake {
@@ -22,10 +23,11 @@ impl Snake {
         Self {
             dir: Direction::Up,
             segments: LinkedList::from([origin]),
+            status: Status::Moved,
         }
     }
 
-    pub fn update(&mut self, apple: &Apple, grid: &mut Grid) -> Status {
+    pub fn update(&mut self, apple: &Apple, grid: &mut Grid) -> &Status {
         // TODO: Handle snake collision with itself
         let curr_pos = self.segments.front().unwrap();
         let pos_diff = self.dir.to_pos_diff();
@@ -37,7 +39,8 @@ impl Snake {
         let height: i32 = grid.height().try_into().unwrap();
 
         if x < 0 || x >= width || y < 0 || y >= height {
-            return Status::Died;
+            self.status = Status::Died;
+            return &self.status;
         }
 
         let (mut sx, mut sy) = (x, y);
@@ -46,18 +49,20 @@ impl Snake {
             (segment.y, sy) = (sy, segment.y);
         }
 
-        let mut status = Status::Moved;
         if apple.pos == (Position { x, y }) {
-            status = Status::Ate;
-            // TODO: Make snake grow one `update()` after it has eaten
+            self.status = Status::Ate;
+            grid[(sy*width + sx).try_into().unwrap()] = Cell::Empty;
+        } else if self.status == Status::Ate {
             self.segments.push_back(Position { x: sx, y: sy });
+            self.status = Status::Moved;
         } else {
             grid[(sy*width + sx).try_into().unwrap()] = Cell::Empty;
+            self.status = Status::Moved;
         }
 
         grid[(y*width + x).try_into().unwrap()] = Cell::Snake;
 
-        status
+        &self.status
     }
 
     pub fn set_dir(&mut self, new_dir: Direction) {
@@ -76,7 +81,7 @@ mod tests {
         let apple = Apple { pos: Position { x: 0, y: 0 } };
         let mut snake = Snake::new(origin);
 
-        assert_eq!(snake.update(&apple, &mut Grid::new()), Status::Died);
+        assert_eq!(snake.update(&apple, &mut Grid::new()), &Status::Died);
     }
 
     #[test]
@@ -85,7 +90,7 @@ mod tests {
         let apple = Apple { pos: Position { x: 2, y: 1 } };
         let mut snake = Snake::new(origin);
 
-        assert_eq!(snake.update(&apple, &mut Grid::new()), Status::Ate);
+        assert_eq!(snake.update(&apple, &mut Grid::new()), &Status::Ate);
     }
 
     #[test]
@@ -94,7 +99,7 @@ mod tests {
         let apple = Apple { pos: Position { x: 0, y: 0 } };
         let mut snake = Snake::new(origin);
 
-        assert_eq!(snake.update(&apple, &mut Grid::new()), Status::Moved);
+        assert_eq!(snake.update(&apple, &mut Grid::new()), &Status::Moved);
     }
 
     #[test]
@@ -108,7 +113,7 @@ mod tests {
             snake.update(&apple, &mut grid);
         }
 
-        assert_eq!(snake.update(&apple, &mut grid), Status::Died);
+        assert_eq!(snake.update(&apple, &mut grid), &Status::Died);
     }
 
     #[test]
@@ -120,7 +125,7 @@ mod tests {
 
         snake.set_dir(Direction::Left);
 
-        assert_eq!(snake.update(&apple, &mut grid), Status::Moved);
+        assert_eq!(snake.update(&apple, &mut grid), &Status::Moved);
     }
 
     #[test]
@@ -189,8 +194,8 @@ mod tests {
 
         let expected = "\
 ┌───────────────────────────────────────────────────────────────────────┐
-│ ┌─┬─┐                                                                 │
-│ └─┼─┤                                                                 │
+│   ┌─┐                                                                 │
+│   ├─┤                                                                 │
 │   └─┘                                                                 │
 │                                                                       │
 │                                                                       │
