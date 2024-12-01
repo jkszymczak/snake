@@ -1,4 +1,3 @@
-mod apple;
 mod bitmap;
 mod direction;
 mod grid;

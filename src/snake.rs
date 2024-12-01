@@ -1,6 +1,5 @@
 use std::collections::LinkedList;
 
-use crate::apple::Apple;
 use crate::direction::Direction;
 use crate::grid::{Cell, Grid};
 use crate::position::Position;
@@ -27,7 +26,7 @@ impl Snake {
         }
     }
 
-    pub fn update(&mut self, apple: &Apple, grid: &mut Grid) -> &Status {
+    pub fn update(&mut self, grid: &mut Grid) -> &Status {
         // TODO: Handle snake collision with itself
         let curr_pos = self.segments.front().unwrap();
         let pos_diff = self.dir.to_pos_diff();
@@ -49,7 +48,8 @@ impl Snake {
             (segment.y, sy) = (sy, segment.y);
         }
 
-        if apple.pos == (Position { x, y }) {
+        //if apple_pos == (Position { x, y }) {
+        if grid[(y*width + x).try_into().unwrap()] == Cell::Apple {
             self.status = Status::Ate;
             grid[(sy*width + sx).try_into().unwrap()] = Cell::Empty;
         } else if self.status == Status::Ate {

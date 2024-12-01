@@ -11,7 +11,6 @@ use termion::{
     input::TermRead,
 };
 
-use crate::apple::Apple;
 use crate::direction::Direction;
 use crate::grid::{ Cell, Grid };
 use crate::position::Position;
@@ -26,7 +25,6 @@ enum State {
 }
 
 pub struct Game {
-    apple: Apple,
     grid: Grid,
     snake: Snake,
     points: usize,
@@ -43,20 +41,15 @@ impl Game {
         };
         // TODO: Ensure the apple position does not collide with one of the
         // snake's segments.
-        let apple = Apple {
-            pos: Position {
-                x: (rand::random::<i32>() % width).abs(),
-                y: (rand::random::<i32>() % height).abs(),
-            },
+        let apple_pos = Position {
+            x: (rand::random::<i32>() % width).abs(),
+            y: (rand::random::<i32>() % height).abs(),
         };
-        // TODO: Remove the `Apple` structure. It is not needed, since we
-        // set the cell's type manually anyway.
-        grid[(apple.pos.y*width + apple.pos.x).try_into().unwrap()]
+        grid[(apple_pos.y*width + apple_pos.x).try_into().unwrap()]
             = Cell::Apple;
         grid[(origin.y*width + origin.x).try_into().unwrap()] = Cell::Snake;
         let snake = Snake::new(origin);
         Self {
-            apple,
             grid,
             snake,
             points: 0,
@@ -125,16 +118,13 @@ impl Game {
         let width: i32 = self.grid.width().try_into().unwrap();
         let height: i32 = self.grid.height().try_into().unwrap();
 
-        match self.snake.update(&self.apple, &mut self.grid) {
+        match self.snake.update(&mut self.grid) {
             Status::Ate => {
                 // TODO: Ensure the apple position does not collide with one
                 // of the snake's segments.
-                self.apple.pos.x = (rand::random::<i32>() % width).abs();
-                self.apple.pos.y = (rand::random::<i32>() % height).abs();
-                self.grid[
-                    (self.apple.pos.y*width + self.apple.pos.x)
-                        .try_into().unwrap()
-                ] = Cell::Apple;
+                let ax = (rand::random::<i32>() % width).abs();
+                let ay = (rand::random::<i32>() % height).abs();
+                self.grid[(ay*width + ax).try_into().unwrap()] = Cell::Apple;
 
                 State::Playing
             },
