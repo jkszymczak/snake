@@ -1,42 +1,34 @@
-use std::ops::{Add, AddAssign};
+use crate::direction::Direction;
 
 #[derive(Debug, PartialEq)]
 pub struct Position {
-    pub x: i32,
-    pub y: i32,
+    pub x: usize,
+    pub y: usize,
 }
 
-impl Add for Position {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        Self {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        }
-    }
-}
-
-impl AddAssign for Position {
-    fn add_assign(&mut self, other: Position) {
-        *self = Self {
-            x: self.x + other.x,
-            y: self.y + other.y,
+impl Position {
+    pub fn move_in_direction(&self, dir: &Direction) -> Result<Position, ()> {
+        let (x, y) = match dir {
+            Direction::Left => {
+                if self.x == 0 {
+                    return Err(());
+                }
+                (self.x - 1, self.y)
+            },
+            Direction::Down => {
+                (self.x, self.y + 1)
+            },
+            Direction::Up => {
+                if self.y == 0 {
+                    return Err(());
+                }
+                (self.x, self.y - 1)
+            },
+            Direction::Right => {
+                (self.x + 1, self.y)
+            },
         };
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_add_assign() {
-        let mut pos = Position { x: 1, y: 3 };
-        let rhs = Position { x: -1, y: 1 };
-
-        pos += rhs;
-
-        assert_eq!(pos, Position { x: 0, y: 4});
+        Ok(Position { x, y })
     }
 }

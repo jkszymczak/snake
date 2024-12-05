@@ -33,8 +33,8 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         let mut grid = Grid::new(); 
-        let width: i32 = grid.width().try_into().unwrap();
-        let height: i32 = grid.height().try_into().unwrap();
+        let width = grid.width();
+        let height = grid.height();
         let origin = Position {
             x: width / 2,
             y: height / 2,
@@ -42,12 +42,11 @@ impl Game {
         // TODO: Ensure the apple position does not collide with one of the
         // snake's segments.
         let apple_pos = Position {
-            x: (rand::random::<i32>() % width).abs(),
-            y: (rand::random::<i32>() % height).abs(),
+            x: rand::random::<usize>() % width,
+            y: rand::random::<usize>() % height,
         };
-        grid[(apple_pos.y*width + apple_pos.x).try_into().unwrap()]
-            = Cell::Apple;
-        grid[(origin.y*width + origin.x).try_into().unwrap()] = Cell::Snake;
+        grid[apple_pos.y*width + apple_pos.x] = Cell::Apple;
+        grid[origin.y*width + origin.x] = Cell::Snake;
         let snake = Snake::new(origin);
         Self {
             grid,
@@ -113,18 +112,16 @@ impl Game {
     }
 
     fn update(&mut self) -> State {
-        // TODO: Make `Position` fields be of type `i32`, so we do not need
-        // to cast `grid.width` to `i32` everywhere.
-        let width: i32 = self.grid.width().try_into().unwrap();
-        let height: i32 = self.grid.height().try_into().unwrap();
+        let width = self.grid.width();
+        let height = self.grid.height();
 
         match self.snake.update(&mut self.grid) {
             Status::Ate => {
                 // TODO: Ensure the apple position does not collide with one
                 // of the snake's segments.
-                let ax = (rand::random::<i32>() % width).abs();
-                let ay = (rand::random::<i32>() % height).abs();
-                self.grid[(ay*width + ax).try_into().unwrap()] = Cell::Apple;
+                let x = rand::random::<usize>() % width;
+                let y = rand::random::<usize>() % height;
+                self.grid[y*width + x] = Cell::Apple;
 
                 State::Playing
             },

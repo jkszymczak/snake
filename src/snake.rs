@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
 
 use crate::direction::Direction;
-use crate::grid::{Cell, Grid};
+use crate::grid::{ Cell, Grid };
 use crate::position::Position;
 
 #[derive(Debug, PartialEq)]
@@ -29,38 +29,38 @@ impl Snake {
     pub fn update(&mut self, grid: &mut Grid) -> &Status {
         // TODO: Handle snake collision with itself
         let curr_pos = self.segments.front().unwrap();
-        let pos_diff = self.dir.to_pos_diff();
-        let (x, y) = (
-            curr_pos.x + pos_diff.x,
-            curr_pos.y + pos_diff.y,
-        );
-        let width: i32 = grid.width().try_into().unwrap();
-        let height: i32 = grid.height().try_into().unwrap();
+        let new_pos = curr_pos.move_in_direction(&self.dir);
+        let width = grid.width();
+        let height = grid.height();
 
-        if x < 0 || x >= width || y < 0 || y >= height {
-            self.status = Status::Died;
-            return &self.status;
-        }
+        if let Ok(Position { mut x, mut y }) = new_pos {
+            if x >= width || y >= height {
+                self.status = Status::Died;
+                return &self.status;
+            }
 
-        let (mut sx, mut sy) = (x, y);
-        for segment in self.segments.iter_mut() {
-            (segment.x, sx) = (sx, segment.x);
-            (segment.y, sy) = (sy, segment.y);
-        }
+            let head_pos = Position { x, y };
+            for segment in self.segments.iter_mut() {
+                (segment.x, x) = (x, segment.x);
+                (segment.y, y) = (y, segment.y);
+            }
+            let tail_pos = Position { x, y };
 
-        //if apple_pos == (Position { x, y }) {
-        if grid[(y*width + x).try_into().unwrap()] == Cell::Apple {
-            self.status = Status::Ate;
-            grid[(sy*width + sx).try_into().unwrap()] = Cell::Empty;
-        } else if self.status == Status::Ate {
-            self.segments.push_back(Position { x: sx, y: sy });
-            self.status = Status::Moved;
+            if grid[head_pos.y * width + head_pos.x] == Cell::Apple {
+                self.status = Status::Ate;
+                grid[tail_pos.y * width + tail_pos.x] = Cell::Empty;
+            } else if self.status == Status::Ate {
+                self.segments.push_back(tail_pos);
+                self.status = Status::Moved;
+            } else {
+                grid[tail_pos.y * width + tail_pos.x] = Cell::Empty;
+                self.status = Status::Moved;
+            }
+
+            grid[head_pos.y * width + head_pos.x] = Cell::Snake;
         } else {
-            grid[(sy*width + sx).try_into().unwrap()] = Cell::Empty;
-            self.status = Status::Moved;
+            self.status = Status::Died;
         }
-
-        grid[(y*width + x).try_into().unwrap()] = Cell::Snake;
 
         &self.status
     }
@@ -78,70 +78,62 @@ mod tests {
     #[test]
     fn test_update_if_crossing_the_top_edge_then_dies() {
         let origin = Position { x: 2, y: 0 };
-        let apple = Apple { pos: Position { x: 0, y: 0 } };
         let mut snake = Snake::new(origin);
 
-        assert_eq!(snake.update(&apple, &mut Grid::new()), &Status::Died);
+        assert_eq!(snake.update(&mut Grid::new()), &Status::Died);
     }
 
     #[test]
     fn test_update_if_encountered_apple_then_returns_ate() {
         let origin = Position { x: 2, y: 2 };
-        let apple = Apple { pos: Position { x: 2, y: 1 } };
+        let mut grid = Grid::new();
+        let width = grid.width();
+        grid[1*width + 2] = Cell::Apple;
         let mut snake = Snake::new(origin);
 
-        assert_eq!(snake.update(&apple, &mut Grid::new()), &Status::Ate);
+        assert_eq!(snake.update(&mut grid), &Status::Ate);
     }
 
     #[test]
     fn test_update_if_no_obstacles_then_moves() {
         let origin = Position { x: 2, y: 11 };
-        let apple = Apple { pos: Position { x: 0, y: 0 } };
         let mut snake = Snake::new(origin);
 
-        assert_eq!(snake.update(&apple, &mut Grid::new()), &Status::Moved);
+        assert_eq!(snake.update(&mut Grid::new()), &Status::Moved);
     }
 
     #[test]
     fn test_update_if_moves_constantly_in_one_dir_then_dies_eventually() {
         let origin = Position { x: 4, y: 4 };
-        let apple = Apple { pos: Position { x: 0, y: 0 } };
         let mut grid = Grid::new();
         let mut snake = Snake::new(origin);
 
         for _ in 0..4 {
-            snake.update(&apple, &mut grid);
+            snake.update(&mut grid);
         }
 
-        assert_eq!(snake.update(&apple, &mut grid), &Status::Died);
+        assert_eq!(snake.update(&mut grid), &Status::Died);
     }
 
     #[test]
     fn test_set_dir() {
         let origin = Position { x: 2, y: 0 };
-        let apple = Apple { pos: Position { x: 10, y: 10 } };
         let mut grid = Grid::new();
         let mut snake = Snake::new(origin);
 
         snake.set_dir(Direction::Left);
 
-        assert_eq!(snake.update(&apple, &mut grid), &Status::Moved);
+        assert_eq!(snake.update(&mut grid), &Status::Moved);
     }
 
     #[test]
     fn test_update_if_moved_then_the_grid_is_updated_correctly() {
         let origin = Position { x: 1, y: 2 };
-        let apple = Apple { pos: Position { x: 6, y: 6 } };
         let mut grid = Grid::new();
-        let grid_width = grid.width();
+        let width = grid.width();
+        grid[6*width + 6] = Cell::Apple;
         let mut snake = Snake::new(origin);
-        let (ax, ay): (usize, usize) = (
-            apple.pos.x.try_into().unwrap(),
-            apple.pos.y.try_into().unwrap(),
-        );
-
-        grid[ay*grid_width + ax] = Cell::Apple;
-        snake.update(&apple, &mut grid);
+        snake.update(&mut grid);
 
         let expected = "\
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -172,25 +164,19 @@ mod tests {
     #[test]
     fn test_update_if_ate_apples_then_the_grid_is_updated_correctly() {
         let origin = Position { x: 1, y: 3 };
-        let mut apple = Apple { pos: Position { x: 1, y: 1 } };
         let mut grid = Grid::new();
-        let grid_width = grid.width();
+        let width = grid.width();
+        grid[1*width + 1] = Cell::Apple;
         let mut snake = Snake::new(origin);
-        let (ax, ay): (usize, usize) = (
-            apple.pos.x.try_into().unwrap(),
-            apple.pos.y.try_into().unwrap(),
-        );
 
-        grid[ay*grid_width + ax] = Cell::Apple;
-
-        snake.update(&apple, &mut grid); // (1, 2)
-        snake.update(&apple, &mut grid); // (1, 1)
-        apple.pos = Position { x: 2, y: 1 };
-        grid[ay*grid_width + ax] = Cell::Apple;
+        snake.update(&mut grid); // (1, 2)
+        snake.update(&mut grid); // (1, 1)
+        let width = grid.width();
+        grid[1*width + 2] = Cell::Apple;
         snake.set_dir(Direction::Right);
-        snake.update(&apple, &mut grid); // (2, 1)
+        snake.update(&mut grid); // (2, 1)
         snake.set_dir(Direction::Down);
-        snake.update(&apple, &mut grid); // (2, 2)
+        snake.update(&mut grid); // (2, 2)
 
         let expected = "\
 ┌───────────────────────────────────────────────────────────────────────┐
