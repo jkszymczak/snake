@@ -15,7 +15,7 @@ use crate::grid::{ Cell, Grid };
 use crate::position::Position;
 use crate::snake::{ Snake, Status };
 
-const FRAME_DURATION: Duration = Duration::from_millis(200);
+const FRAME_DURATION: Duration = Duration::from_millis(100);
 
 #[derive(PartialEq)]
 enum State {
