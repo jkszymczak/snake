@@ -52,6 +52,14 @@ impl Grid {
         output
     }
 
+    pub fn gen_apple(&mut self) {
+        let mut apple_pos = rand::random::<usize>() % GRID_SIZE;
+        while self[apple_pos] == Cell::Snake {
+            apple_pos = (apple_pos + 1) % GRID_SIZE;
+        }
+        self[apple_pos] = Cell::Apple;
+    }
+
     fn render_cell(&self, x: usize, y: usize) -> String {
         use State::*;
 

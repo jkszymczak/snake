@@ -1,4 +1,3 @@
-use rand;
 use termion::raw::RawTerminal;
 use termion::screen::AlternateScreen;
 use std::io::{stdout, Stdout, Write};
@@ -39,14 +38,8 @@ impl Game {
             x: width / 2,
             y: height / 2,
         };
-        // TODO: Ensure the apple position does not collide with one of the
-        // snake's segments.
-        let apple_pos = Position {
-            x: rand::random::<usize>() % width,
-            y: rand::random::<usize>() % height,
-        };
-        grid[apple_pos.y*width + apple_pos.x] = Cell::Apple;
         grid[origin.y*width + origin.x] = Cell::Snake;
+        grid.gen_apple();
         let snake = Snake::new(origin);
         Self {
             grid,
@@ -112,17 +105,9 @@ impl Game {
     }
 
     fn update(&mut self) -> State {
-        let width = self.grid.width();
-        let height = self.grid.height();
-
         match self.snake.update(&mut self.grid) {
             Status::Ate => {
-                // TODO: Ensure the apple position does not collide with one
-                // of the snake's segments.
-                let x = rand::random::<usize>() % width;
-                let y = rand::random::<usize>() % height;
-                self.grid[y*width + x] = Cell::Apple;
-
+                self.grid.gen_apple();
                 State::Playing
             },
             Status::Died => State::GameOver,
