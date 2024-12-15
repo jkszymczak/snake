@@ -45,16 +45,15 @@ impl Snake {
             }
             let tail_pos = Position { x, y };
 
-            // TODO: Test what happens when snake eats apple in two
-            //       consecutive updates.
-            if grid[head_pos.y*width + head_pos.x] == Cell::Apple {
-                self.status = Status::Ate;
-                grid[tail_pos.y*width + tail_pos.x] = Cell::Empty;
-            } else if self.status == Status::Ate {
+            if self.status == Status::Ate {
                 self.segments.push_back(tail_pos);
-                self.status = Status::Moved;
             } else {
                 grid[tail_pos.y*width + tail_pos.x] = Cell::Empty;
+            }
+
+            if grid[head_pos.y*width + head_pos.x] == Cell::Apple {
+                self.status = Status::Ate;
+            } else {
                 self.status = Status::Moved;
             }
 
@@ -183,8 +182,8 @@ mod tests {
 
         let expected = "\
 ┌───────────────────────────────────────────────────────────────────────┐
-│   ┌─┐                                                                 │
-│   ├─┤                                                                 │
+│ ┌─┬─┐                                                                 │
+│ └─┼─┤                                                                 │
 │   └─┘                                                                 │
 │                                                                       │
 │                                                                       │
@@ -234,5 +233,44 @@ mod tests {
         snake.update(&mut grid);
 
         assert_eq!(snake.update(&mut grid), &Status::Died);
+    }
+
+    #[test]
+    fn test_update_when_snake_eats_second_time_in_a_row() {
+        let origin = Position { x: 1, y: 4 };
+        let mut grid = Grid::new();
+        let width = grid.width();
+        grid[2*width + 1] = Cell::Apple;
+        grid[3*width + 1] = Cell::Apple;
+        let mut snake = Snake::new(origin);
+
+        for _ in 0..3 {
+            snake.update(&mut grid);
+        }
+
+        let expected = "\
+┌───────────────────────────────────────────────────────────────────────┐
+│ ┌─┐                                                                   │
+│ ├─┤                                                                   │
+│ ├─┤                                                                   │
+│ └─┘                                                                   │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+";
+        pretty_assert_eq!(grid.render(), expected);
     }
 }
