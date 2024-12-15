@@ -27,14 +27,13 @@ impl Snake {
     }
 
     pub fn update(&mut self, grid: &mut Grid) -> &Status {
-        // TODO: Handle snake collision with itself
         let curr_pos = self.segments.front().unwrap();
         let new_pos = curr_pos.move_in_direction(&self.dir);
         let width = grid.width();
         let height = grid.height();
 
         if let Ok(Position { mut x, mut y }) = new_pos {
-            if x >= width || y >= height {
+            if x >= width || y >= height || grid[y*width + x] == Cell::Snake {
                 self.status = Status::Died;
                 return &self.status;
             }
@@ -46,14 +45,16 @@ impl Snake {
             }
             let tail_pos = Position { x, y };
 
-            if grid[head_pos.y * width + head_pos.x] == Cell::Apple {
+            // TODO: Test what happens when snake eats apple in two
+            //       consecutive updates.
+            if grid[head_pos.y*width + head_pos.x] == Cell::Apple {
                 self.status = Status::Ate;
-                grid[tail_pos.y * width + tail_pos.x] = Cell::Empty;
+                grid[tail_pos.y*width + tail_pos.x] = Cell::Empty;
             } else if self.status == Status::Ate {
                 self.segments.push_back(tail_pos);
                 self.status = Status::Moved;
             } else {
-                grid[tail_pos.y * width + tail_pos.x] = Cell::Empty;
+                grid[tail_pos.y*width + tail_pos.x] = Cell::Empty;
                 self.status = Status::Moved;
             }
 
@@ -66,6 +67,8 @@ impl Snake {
     }
 
     pub fn set_dir(&mut self, new_dir: Direction) {
+        // TODO: Do not do anything if `new_dir` is opposite to the current
+        //       snake direction.
         self.dir = new_dir;
     }
 }
@@ -202,5 +205,34 @@ mod tests {
 └───────────────────────────────────────────────────────────────────────┘
 ";
         pretty_assert_eq!(grid.render(), expected);
+    }
+
+    #[test]
+    fn test_update_if_collided_with_itself_then_dies() {
+        let origin = Position { x: 1, y: 18 };
+        let oy = origin.y;
+        let mut grid = Grid::new();
+        let width = grid.width();
+        for y in (1..18).step_by(2) {
+            grid[y*width + 1] = Cell::Apple;
+        }
+        let mut snake = Snake::new(origin);
+
+        for _ in 1..oy {
+            snake.update(&mut grid);
+        }
+
+        snake.set_dir(Direction::Right);
+        snake.update(&mut grid);
+        snake.update(&mut grid);
+
+        snake.set_dir(Direction::Down);
+        snake.update(&mut grid);
+        snake.update(&mut grid);
+
+        snake.set_dir(Direction::Left);
+        snake.update(&mut grid);
+
+        assert_eq!(snake.update(&mut grid), &Status::Died);
     }
 }
