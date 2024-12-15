@@ -1,6 +1,6 @@
 use std::collections::LinkedList;
 
-use crate::direction::Direction;
+use crate::direction::{ Direction, are_opposite };
 use crate::grid::{ Cell, Grid };
 use crate::position::Position;
 
@@ -66,9 +66,9 @@ impl Snake {
     }
 
     pub fn set_dir(&mut self, new_dir: Direction) {
-        // TODO: Do not do anything if `new_dir` is opposite to the current
-        //       snake direction.
-        self.dir = new_dir;
+        if !are_opposite(&self.dir, &new_dir) {
+            self.dir = new_dir;
+        }
     }
 }
 
