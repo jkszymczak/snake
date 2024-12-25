@@ -1,17 +1,22 @@
-use termion::raw::RawTerminal;
-use termion::screen::AlternateScreen;
 use std::io::{stdout, Stdout, Write};
 use std::thread;
 use std::time::{Duration, Instant};
 use termion::{
-    screen::IntoAlternateScreen,
-    raw::IntoRawMode,
     event::Key,
     input::TermRead,
+    raw::IntoRawMode,
+    raw::RawTerminal,
+    screen::AlternateScreen,
+    screen::IntoAlternateScreen,
 };
 
 use crate::direction::Direction;
-use crate::grid::{ Cell, Grid };
+use crate::grid::{
+    Cell,
+    Grid,
+    GRID_WIDTH_IN_CHARS,
+    GRID_HEIGHT_IN_CHARS,
+};
 use crate::position::Position;
 use crate::snake::{ Snake, Status };
 
@@ -117,17 +122,36 @@ impl Game {
 
     fn render(&self, screen: &mut AlternateScreen<RawTerminal<Stdout>>) {
         // TODO: Show points
-        // TODO: Center the grid in the terminal window
         write!(
             screen,
             "{}",
             termion::cursor::Goto(1, 1)
         ).expect("Failed to set cursor position");
 
-        screen.flush().unwrap();
+        let (col_count, row_count) = termion::terminal_size().expect(
+            "Failed to get terminal size"
+        );
+
+        if GRID_HEIGHT_IN_CHARS + 1 > (row_count as usize) {
+            panic!("Terminal window height is too small");
+        }
+        if GRID_WIDTH_IN_CHARS > (col_count as usize) {
+            panic!("Terminal window width is too small");
+        }
+
+        let top_margin = (row_count as usize)/2 - GRID_HEIGHT_IN_CHARS/2;
+        let left_margin = (col_count as usize)/2 - GRID_WIDTH_IN_CHARS/2;
+
+        for _ in 0..top_margin - 1 {
+            print!("\r\n");
+        }
 
         for line in self.grid.render().lines() {
-            print!("{}\r\n", line);
+            print!("\r\n");
+            print!("{}", String::from(" ").repeat(left_margin));
+            print!("{}", line);
         }
+
+        screen.flush().unwrap();
     }
 }

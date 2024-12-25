@@ -6,6 +6,12 @@ const GRID_WIDTH: usize = 36;
 const GRID_HEIGHT: usize = 20;
 const GRID_SIZE: usize = GRID_WIDTH*GRID_HEIGHT;
 
+const CELL_WIDTH: usize = 2;
+const CELL_HEIGHT: usize = 1;
+
+pub const GRID_WIDTH_IN_CHARS: usize = GRID_WIDTH*CELL_WIDTH + 1;
+pub const GRID_HEIGHT_IN_CHARS: usize = GRID_HEIGHT*CELL_HEIGHT + 1;
+
 #[derive(Debug, PartialEq)]
 pub enum Cell {
     Empty,
