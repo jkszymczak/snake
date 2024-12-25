@@ -2,6 +2,7 @@ use std::io::{stdout, Stdout, Write};
 use std::thread;
 use std::time::{Duration, Instant};
 use termion::{
+    cursor,
     event::Key,
     input::TermRead,
     raw::IntoRawMode,
@@ -143,10 +144,6 @@ impl Game {
     ) -> Result<(), GameError> {
         // TODO: Show points
 
-        if let Err(_) = write!(screen, "{}", termion::cursor::Goto(1, 1)) {
-            return Err(GameError::SetCursorPos);
-        }
-
         let (col_count, row_count) = match termion::terminal_size() {
             Ok(size) => size,
             Err(_) => return Err(GameError::GetTerminalSize),
@@ -159,18 +156,22 @@ impl Game {
             return Err(GameError::TerminalWidthTooSmall);
         }
 
-        let top_margin = (row_count as usize)/2 - GRID_HEIGHT_IN_CHARS/2;
+        let top_margin = row_count/2 - (GRID_HEIGHT_IN_CHARS as u16)/2;
         let left_margin = (col_count as usize)/2 - GRID_WIDTH_IN_CHARS/2;
 
-        for _ in 0..top_margin - 1 {
-            print!("\r\n");
+        if let Err(_) = write!(screen, "{}", cursor::Goto(1, top_margin + 1)) {
+            return Err(GameError::SetCursorPos);
         }
 
-        for line in self.grid.render().lines() {
-            print!("\r\n");
-            print!("{}", String::from(" ").repeat(left_margin));
-            print!("{}", line);
-        }
+        let output = self.grid.render()
+            .lines()
+            .map(|line|
+                format!("{}{}", String::from(" ").repeat(left_margin), line)
+            )
+            .collect::<Vec<_>>()
+            .join("\r\n");
+
+        print!("{}", output);
 
         if let Err(_) = screen.flush() {
             return Err(GameError::FlushScreen);
