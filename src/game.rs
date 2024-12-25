@@ -22,6 +22,18 @@ use crate::snake::{ Snake, Status };
 
 const FRAME_DURATION: Duration = Duration::from_millis(100);
 
+pub enum GameError {
+    FlushScreen,
+    GetTerminalSize,
+    HideCursor,
+    SetCursorPos,
+    ShowCursor,
+    SwitchIntoAlternateScreen,
+    SwitchIntoRawMode,
+    TerminalHeightTooSmall,
+    TerminalWidthTooSmall,
+}
+
 #[derive(PartialEq)]
 enum State {
     Playing,
@@ -53,22 +65,29 @@ impl Game {
         }
     }
 
-    pub fn run(&mut self) -> usize {
+    pub fn run(&mut self) -> Result<usize, GameError> {
         let mut stdin = termion::async_stdin().keys();
-        let stdout = stdout().into_raw_mode().unwrap();
-        let mut screen = stdout.into_alternate_screen().unwrap();
+        let stdout = match stdout().into_raw_mode() {
+            Ok(stdout) => stdout,
+            Err(_) => return Err(GameError::SwitchIntoRawMode),
+        };
+        let mut screen = match stdout.into_alternate_screen() {
+            Ok(screen) => screen,
+            Err(_) => return Err(GameError::SwitchIntoAlternateScreen),
+        };
 
-        write!(
-            screen,
-            "{}",
-            termion::cursor::Hide,
-        ).expect("Failed to hide cursor");
+        if let Err(_) = write!(screen, "{}", termion::cursor::Hide) {
+            return Err(GameError::HideCursor);
+        }
 
         let mut time = Instant::now();
         let mut state = State::Playing;
         while state == State::Playing {
             state = self.update();
-            self.render(&mut screen);
+            if let Err(e) = self.render(&mut screen) {
+                write!(screen, "{}", termion::cursor::Show).unwrap();
+                return Err(e);
+            }
 
             let elapsed = Instant::now().duration_since(time);
             if let Some(t) = FRAME_DURATION.checked_sub(elapsed) {
@@ -100,13 +119,11 @@ impl Game {
             }
         }
 
-        write!(
-            screen,
-            "{}",
-            termion::cursor::Show,
-        ).expect("Failed to show cursor");
+        if let Err(_) = write!(screen, "{}", termion::cursor::Show) {
+            return Err(GameError::ShowCursor);
+        }
 
-        self.points
+        Ok(self.points)
     }
 
     fn update(&mut self) -> State {
@@ -120,23 +137,26 @@ impl Game {
         }
     }
 
-    fn render(&self, screen: &mut AlternateScreen<RawTerminal<Stdout>>) {
+    fn render(
+        &self,
+        screen: &mut AlternateScreen<RawTerminal<Stdout>>,
+    ) -> Result<(), GameError> {
         // TODO: Show points
-        write!(
-            screen,
-            "{}",
-            termion::cursor::Goto(1, 1)
-        ).expect("Failed to set cursor position");
 
-        let (col_count, row_count) = termion::terminal_size().expect(
-            "Failed to get terminal size"
-        );
+        if let Err(_) = write!(screen, "{}", termion::cursor::Goto(1, 1)) {
+            return Err(GameError::SetCursorPos);
+        }
+
+        let (col_count, row_count) = match termion::terminal_size() {
+            Ok(size) => size,
+            Err(_) => return Err(GameError::GetTerminalSize),
+        };
 
         if GRID_HEIGHT_IN_CHARS + 1 > (row_count as usize) {
-            panic!("Terminal window height is too small");
+            return Err(GameError::TerminalHeightTooSmall);
         }
         if GRID_WIDTH_IN_CHARS > (col_count as usize) {
-            panic!("Terminal window width is too small");
+            return Err(GameError::TerminalWidthTooSmall);
         }
 
         let top_margin = (row_count as usize)/2 - GRID_HEIGHT_IN_CHARS/2;
@@ -152,6 +172,10 @@ impl Game {
             print!("{}", line);
         }
 
-        screen.flush().unwrap();
+        if let Err(_) = screen.flush() {
+            return Err(GameError::FlushScreen);
+        }
+
+        Ok(())
     }
 }
