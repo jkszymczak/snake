@@ -131,6 +131,7 @@ impl Game {
         match self.snake.update(&mut self.grid) {
             Status::Ate => {
                 self.grid.gen_apple();
+                self.points += 1;
                 State::Playing
             },
             Status::Died => State::GameOver,
@@ -142,8 +143,6 @@ impl Game {
         &self,
         screen: &mut AlternateScreen<RawTerminal<Stdout>>,
     ) -> Result<(), GameError> {
-        // TODO: Show points
-
         let (col_count, row_count) = match termion::terminal_size() {
             Ok(size) => size,
             Err(_) => return Err(GameError::GetTerminalSize),
@@ -159,14 +158,18 @@ impl Game {
         let top_margin = row_count/2 - (GRID_HEIGHT_IN_CHARS as u16)/2;
         let left_margin = (col_count as usize)/2 - GRID_WIDTH_IN_CHARS/2;
 
-        if let Err(_) = write!(screen, "{}", cursor::Goto(1, top_margin + 1)) {
+        if let Err(_) = write!(screen, "{}", cursor::Goto(1, top_margin)) {
             return Err(GameError::SetCursorPos);
         }
+
+        let padding = String::from(" ").repeat(left_margin);
+
+        print!("{} Score: {}\r\n", padding, self.points);
 
         let output = self.grid.render()
             .lines()
             .map(|line|
-                format!("{}{}", String::from(" ").repeat(left_margin), line)
+                format!("{}{}", padding, line)
             )
             .collect::<Vec<_>>()
             .join("\r\n");
