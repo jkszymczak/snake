@@ -7,3 +7,4 @@ edition = "2021"
 pretty_assertions = "1.4.1"
 rand = "0.8.5"
 termion = "4.0.2"
+rusty_check = {git = "https://github.com/jkszymczak/RustyCheck.git"}
