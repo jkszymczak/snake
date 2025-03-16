@@ -1,4 +1,5 @@
 use std::ops::{AddAssign, Index};
+use rusty_check::rusty_check;
 
 const BITMAP_SIZE: usize = 5;
 
@@ -172,6 +173,14 @@ mod tests {
 
         for i in 0..expected.len() {
             assert_eq!(bitmap[i], expected[i]);
+        }
+    }
+    #[test]
+    fn test_macro() {
+        rusty_check! {
+                check {
+                    1 equal or less than 2
+            }
         }
     }
 }
