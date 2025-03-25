@@ -175,12 +175,12 @@ mod tests {
             assert_eq!(bitmap[i], expected[i]);
         }
     }
-    #[test]
-    fn test_macro() {
-        rusty_check! {
-                check {
-                    1 equal or less than 2
-            }
-        }
+}
+rusty_check! {
+    case test_in_project {
+        check {
+        1 equal 2
     }
+    }
+
 }
